@@ -9,12 +9,7 @@ template <typename T>
 class StatisticsCollector
 {
 public:
-    StatisticsCollector()
-        : count(0), sum(0.0), mean(0.0), m2(0.0),
-          minVal(std::numeric_limits<T>::max()),
-          maxVal(std::numeric_limits<T>::lowest())
-    {
-    }
+    StatisticsCollector() : count(0), sum(0.0), mean(0.0), m2(0.0), minVal(std::numeric_limits<T>::max()), maxVal(std::numeric_limits<T>::lowest()) {}
 
     // Добавить элемент и обновить все статистики онлайн
     void Add(const T &value)
@@ -58,8 +53,11 @@ public:
     }
 
     size_t GetCount() const { return count; }
+    // среднее
     double GetAverage() const { return count ? sum / static_cast<double>(count) : 0.0; }
+    // дисперсия
     std::optional<double> GetVariance() const { return (count > 1) ? std::optional<double>(m2 / (count - 1)) : std::nullopt; }
+    // стандартное отклонение
     std::optional<double> GetStdDev() const
     {
         auto v = GetVariance();
@@ -86,15 +84,10 @@ public:
     }
 
 private:
-    size_t count;
-    double sum;
-    double mean; // for Welford
-    double m2;   // for Welford
-
-    T minVal;
-    T maxVal;
-
-    // lower max-heap, upper min-heap
-    std::priority_queue<T> lower;
-    std::priority_queue<T, std::vector<T>, std::greater<T>> upper;
+    size_t count;                                                  // сколько элементов
+    double sum;                                                    // сумма всех значений
+    double mean, m2;                                               // для среднего и дисперсии
+    T minVal, maxVal;                                              // минимумы и максимумы
+    std::priority_queue<T> lower;                                  // куча-максимум
+    std::priority_queue<T, std::vector<T>, std::greater<T>> upper; // куча-минимум
 };

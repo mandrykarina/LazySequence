@@ -11,24 +11,20 @@ template <typename T>
 class LazySequence
 {
 public:
+    // правило, как получать новый элемент(что нужно вычислить, уже вычисленные элементы)
     using Generator = std::function<T(size_t, const std::vector<T> &)>;
 
-    // --- Конструкторы ---
-    explicit LazySequence(Generator gen = nullptr)
-        : generator(gen)
-    {
-    }
+    // Конструкторы
+    // explicit - чтобы не было неявного преобразования типов элементов
+    explicit LazySequence(Generator gen = nullptr) : generator(gen) {}
 
-    explicit LazySequence(const std::vector<T> &items)
-        : cache(items), generator(nullptr)
-    {
-    }
+    explicit LazySequence(const std::vector<T> &items) : cache(items), generator(nullptr) {}
 
-    // --- Копирование запрещено (из-за mutex) ---
+    // Копирование запрещено (чтобы не было двух потоков)
     LazySequence(const LazySequence &other) = delete;
     LazySequence &operator=(const LazySequence &other) = delete;
 
-    // --- Перемещение разрешено ---
+    // Перемещение разрешено без копирования
     LazySequence(LazySequence &&other) noexcept
     {
         std::lock_guard<std::mutex> lock(other.mtx);
@@ -48,7 +44,7 @@ public:
         return *this;
     }
 
-    // --- Методы доступа ---
+    // Методы доступа
     // Получить элемент по индексу (вычисляет недостающие)
     T Get(size_t index)
     {
@@ -82,7 +78,7 @@ public:
         cache.push_back(value);
     }
 
-    // Map: возвращает новую ленивую последовательность, чей генератор вызывает this->Get
+    // Map: возвращает новую ленивую последовательность,в которой каждый элемент — это результат применения функции f к элементу старой последовательности
     template <typename U>
     LazySequence<U> Map(std::function<U(const T &)> f) const
     {
@@ -96,7 +92,7 @@ public:
     }
 
 private:
-    mutable std::mutex mtx;
-    std::vector<T> cache;
-    Generator generator;
+    mutable std::mutex mtx; // блокировка, чтобы два потока не сломали список одновременно
+    std::vector<T> cache;   // уже вычисленные элементы
+    Generator generator;    // правило, как считать новые
 };

@@ -4,34 +4,27 @@
 #include <string>
 #include <functional>
 #include <iostream>
-#include <optional>
+#include <optional> //значение, которое может быть или не быть
 
 // ReadOnlyStream<T> — несколько конструкторов: из файла, из vector, из ленивого генератора (callable)
 template <typename T>
 class ReadOnlyStream
 {
 public:
-    // from file: items separated by whitespace, one by one
-    explicit ReadOnlyStream(const std::string &filename)
-        : sourceType(Type::File), file(filename), vecPtr(nullptr), gen(nullptr)
+    // конструктор: чтение из файла
+    explicit ReadOnlyStream(const std::string &filename) : sourceType(Type::File), file(filename), vecPtr(nullptr), gen(nullptr)
     {
         if (!file.is_open())
             throw std::runtime_error("Cannot open file: " + filename);
     }
 
-    // from vector (in-memory)
-    explicit ReadOnlyStream(const std::vector<T> &v)
-        : sourceType(Type::Vector), file(), vec(std::make_shared<std::vector<T>>(v)), vecPtr(vec.get()), gen(nullptr), vecPos(0)
-    {
-    }
+    // конструктор: чтение из вектора(“читает” уже готовый массив из памяти — как будто это файл, но без диска)
+    explicit ReadOnlyStream(const std::vector<T> &v) : sourceType(Type::Vector), file(), vec(std::make_shared<std::vector<T>>(v)), vecPtr(vec.get()), gen(nullptr), vecPos(0) {}
 
-    // from generator function: std::function<std::optional<T>()> returning next value or nullopt for end
-    explicit ReadOnlyStream(std::function<std::optional<T>()> generator)
-        : sourceType(Type::Generator), file(), vecPtr(nullptr), gen(generator)
-    {
-    }
+    // конструктор: чтение из генератора(поток данных, который порождается функцией.Функция возвращает std::optional<T>:если есть новое значение → return value;если всё закончилось → return std::nullopt;)
+    explicit ReadOnlyStream(std::function<std::optional<T>()> generator) : sourceType(Type::Generator), file(), vecPtr(nullptr), gen(generator) {}
 
-    // from stdin
+    // поток, который читает данные с клавиатуры
     static ReadOnlyStream<T> FromStdin()
     {
         ReadOnlyStream<T> s;
@@ -73,13 +66,14 @@ public:
         return false;
     }
 
+    // говорит, что поток не закончился
     bool IsEndOfStream()
     {
-        // best-effort
         return false;
     }
 
 private:
+    // “пустой” конструктор, используют только из FromStdin()
     ReadOnlyStream() : sourceType(Type::Stdin), vecPtr(nullptr), gen(nullptr) {}
 
     enum class Type
@@ -90,9 +84,9 @@ private:
         Stdin
     };
     Type sourceType;
-    std::ifstream file;
-    std::shared_ptr<std::vector<T>> vec;
-    std::vector<T> *vecPtr;
-    size_t vecPos = 0;
-    std::function<std::optional<T>()> gen;
+    std::ifstream file;                    // для чтения из файла
+    std::shared_ptr<std::vector<T>> vec;   // чтобы хранить вектор
+    std::vector<T> *vecPtr;                // указатель для удобства
+    size_t vecPos = 0;                     // индекс следующего элемента в векторе
+    std::function<std::optional<T>()> gen; // генератор функции
 };
