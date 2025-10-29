@@ -8,6 +8,13 @@
 template <typename T>
 class StatisticsCollector
 {
+private:
+    size_t count;                                                  // сколько элементов
+    double sum;                                                    // сумма всех значений
+    double mean, m2;                                               // для среднего и дисперсии
+    T minVal, maxVal;                                              // минимумы и максимумы
+    std::priority_queue<T> lower;                                  // куча-максимум
+    std::priority_queue<T, std::vector<T>, std::greater<T>> upper; // куча-минимум
 public:
     StatisticsCollector() : count(0), sum(0.0), mean(0.0), m2(0.0), minVal(std::numeric_limits<T>::max()), maxVal(std::numeric_limits<T>::lowest()) {}
 
@@ -82,12 +89,4 @@ public:
             return static_cast<double>(lower.top());
         }
     }
-
-private:
-    size_t count;                                                  // сколько элементов
-    double sum;                                                    // сумма всех значений
-    double mean, m2;                                               // для среднего и дисперсии
-    T minVal, maxVal;                                              // минимумы и максимумы
-    std::priority_queue<T> lower;                                  // куча-максимум
-    std::priority_queue<T, std::vector<T>, std::greater<T>> upper; // куча-минимум
 };

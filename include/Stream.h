@@ -10,6 +10,23 @@
 template <typename T>
 class ReadOnlyStream
 {
+private:
+    // “пустой” конструктор, используют только из FromStdin()
+    ReadOnlyStream() : sourceType(Type::Stdin), vecPtr(nullptr), gen(nullptr) {}
+
+    enum class Type
+    {
+        File,
+        Vector,
+        Generator,
+        Stdin
+    };
+    Type sourceType;
+    std::ifstream file;                    // для чтения из файла
+    std::shared_ptr<std::vector<T>> vec;   // чтобы хранить вектор
+    std::vector<T> *vecPtr;                // указатель для удобства
+    size_t vecPos = 0;                     // индекс следующего элемента в векторе
+    std::function<std::optional<T>()> gen; // генератор функции
 public:
     // конструктор: чтение из файла
     explicit ReadOnlyStream(const std::string &filename) : sourceType(Type::File), file(filename), vecPtr(nullptr), gen(nullptr)
@@ -71,22 +88,4 @@ public:
     {
         return false;
     }
-
-private:
-    // “пустой” конструктор, используют только из FromStdin()
-    ReadOnlyStream() : sourceType(Type::Stdin), vecPtr(nullptr), gen(nullptr) {}
-
-    enum class Type
-    {
-        File,
-        Vector,
-        Generator,
-        Stdin
-    };
-    Type sourceType;
-    std::ifstream file;                    // для чтения из файла
-    std::shared_ptr<std::vector<T>> vec;   // чтобы хранить вектор
-    std::vector<T> *vecPtr;                // указатель для удобства
-    size_t vecPos = 0;                     // индекс следующего элемента в векторе
-    std::function<std::optional<T>()> gen; // генератор функции
 };

@@ -10,6 +10,10 @@
 template <typename T>
 class LazySequence
 {
+private:
+    mutable std::mutex mtx; // блокировка, чтобы два потока не сломали список одновременно
+    std::vector<T> cache;   // уже вычисленные элементы
+    Generator generator;    // правило, как считать новые
 public:
     // правило, как получать новый элемент(что нужно вычислить, уже вычисленные элементы)
     using Generator = std::function<T(size_t, const std::vector<T> &)>;
@@ -90,9 +94,4 @@ public:
         };
         return LazySequence<U>(g);
     }
-
-private:
-    mutable std::mutex mtx; // блокировка, чтобы два потока не сломали список одновременно
-    std::vector<T> cache;   // уже вычисленные элементы
-    Generator generator;    // правило, как считать новые
 };

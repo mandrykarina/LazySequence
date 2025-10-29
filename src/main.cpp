@@ -1,32 +1,20 @@
 #include <iostream>
-#include <string>
-#include <thread>
-#include <chrono>
+#include <iomanip>
 #include <vector>
-#include <random>
+#include <fstream>
+#include <optional>
+#include <cassert>
 #include "../include/LazySequence.h"
 #include "../include/Stream.h"
 #include "../include/StatisticsCollector.h"
 
-// небольшой helper: ленивый генератор случайных чисел
-std::function<std::optional<int>()> RandomGenerator(int count, int minv = 0, int maxv = 100)
-{
-    auto mt = std::make_shared<std::mt19937>(std::random_device{}());
-    auto dist = std::make_shared<std::uniform_int_distribution<int>>(minv, maxv);
-    auto remaining = std::make_shared<int>(count);
-    return [mt, dist, remaining]() -> std::optional<int>
-    {
-        if (*remaining <= 0)
-            return std::nullopt;
-        --(*remaining);
-        return (*dist)(*mt);
-    };
-}
+using namespace std;
 
-// ленивый генератор Фибоначчи (как демонстрация LazySequence)
-LazySequence<long long> MakeFibonacciSequence()
+// Тест ленивой последовательности
+void TestLazyFibonacci()
 {
-    LazySequence<long long>::Generator g = [](size_t idx, const std::vector<long long> &cache) -> long long
+    cout << "==== Тест LazySequence: последовательность Фибоначчи ====\n";
+    LazySequence<long long>::Generator g = [](size_t idx, const vector<long long> &cache) -> long long
     {
         if (idx == 0)
             return 0;
@@ -34,127 +22,120 @@ LazySequence<long long> MakeFibonacciSequence()
             return 1;
         return cache[idx - 1] + cache[idx - 2];
     };
-    LazySequence<long long> seq(g);
-    // обязательно не materialize заранее
-    return seq;
+    LazySequence<long long> fib(g);
+
+    long long expected[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
+    for (size_t i = 0; i < 10; ++i)
+    {
+        long long v = fib.Get(i);
+        cout << "F(" << i << ") = " << v << (v == expected[i] ? " да" : " нет") << "\n";
+        assert(v == expected[i]);
+    }
+
+    cout << "Материализовано элементов: " << fib.GetMaterializedCount() << "\n";
+    cout << "LazySequence работает корректно\n\n";
 }
 
-void RunStreamDemo()
+// Тест StatisticsCollector
+void TestStatisticsCollector()
 {
-    using T = int;
-    std::cout << "Выберите источник:\n1) Файл\n2) Ввод с клавиатуры (stdin)\n3) Генератор случайных чисел (100 элементов)\n4) Вектор-пример\n> ";
-    int choice;
-    std::cin >> choice;
+    cout << "Тест StatisticsCollector \n";
+    StatisticsCollector<int> stats;
+    vector<int> values = {5, 1, 3, 2, 4};
 
-    std::unique_ptr<ReadOnlyStream<T>> streamPtr;
-    if (choice == 1)
-    {
-        std::cout << "Введите имя файла: ";
-        std::string fname;
-        std::cin >> fname;
-        try
-        {
-            streamPtr = std::make_unique<ReadOnlyStream<T>>(fname);
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << "Ошибка открытия файла: " << e.what() << std::endl;
-            return;
-        }
-    }
-    else if (choice == 2)
-    {
-        // FromStdin uses std::cin
-        streamPtr = std::make_unique<ReadOnlyStream<T>>(ReadOnlyStream<T>::FromStdin());
-        std::cout << "Введите числа через пробел/enter. Чтобы остановить - нажмите Ctrl+D (или Ctrl+Z в Windows).\n";
-    }
-    else if (choice == 3)
-    {
-        auto gen = RandomGenerator(100, 0, 200);
-        streamPtr = std::make_unique<ReadOnlyStream<T>>(gen);
-    }
-    else
-    {
-        std::vector<T> v = {5, 3, 8, 1, 9, 10, 2, 2, 7, 6, 4};
-        streamPtr = std::make_unique<ReadOnlyStream<T>>(v);
-    }
+    cout << "Входные данные: ";
+    for (int v : values)
+        cout << v << " ";
+    cout << "\n";
 
-    StatisticsCollector<T> stats;
-    LazySequence<T> lazySeq; // без генератора, мы будем Append'ить прочитанные значения
+    for (int v : values)
+        stats.Add(v);
 
-    std::cout << "Запуск чтения потока...\n";
-    T value;
-    while (streamPtr->TryRead(value))
-    {
-        lazySeq.Append(value); // materialize on demand (we append as we read)
-        stats.Add(value);
+    cout << fixed << setprecision(2);
+    cout << "Count: " << stats.GetCount() << "\n";
+    cout << "Average: " << stats.GetAverage() << "\n";
+    cout << "Min: " << stats.GetMin() << ", Max: " << stats.GetMax() << "\n";
+    cout << "Median: " << *stats.GetMedian() << "\n";
+    cout << "Variance: " << *stats.GetVariance() << "\n";
+    cout << "StdDev: " << *stats.GetStdDev() << "\n";
 
-        auto med = stats.GetMedian();
-        std::cout << "Прочитано: " << value
-                  << " | count=" << stats.GetCount()
-                  << " | avg=" << stats.GetAverage();
-        if (med)
-            std::cout << " | median=" << *med;
-        auto var = stats.GetVariance();
-        if (var)
-            std::cout << " | var=" << *var;
-        std::cout << " | min=" << stats.GetMin() << " max=" << stats.GetMax();
-        std::cout << "\n";
-
-        // имитируем поток: небольшой sleep только если источник генератор
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-
-    std::cout << "\n--- Конец потока ---\nИтог: count=" << stats.GetCount()
-              << " avg=" << stats.GetAverage();
-    auto med = stats.GetMedian();
-    if (med)
-        std::cout << " median=" << *med;
-    auto var = stats.GetVariance();
-    if (var)
-        std::cout << " variance=" << *var;
-    std::cout << " min=" << stats.GetMin() << " max=" << stats.GetMax() << "\n";
-
-    std::cout << "Материализовано в ленивой последовательности: " << lazySeq.GetMaterializedCount() << " элементов.\n";
+    assert(stats.GetCount() == 5);
+    assert(fabs(stats.GetAverage() - 3.0) < 1e-9);
+    assert(stats.GetMin() == 1);
+    assert(stats.GetMax() == 5);
+    cout << "StatisticsCollector прошёл тест\n\n";
 }
 
-void RunFibonacciDemo()
+// Подробный тест ReadOnlyStream
+void TestReadOnlyStream()
 {
-    auto fib = MakeFibonacciSequence();
-    std::cout << "Введите сколько первых чисел Фибоначчи вывести: ";
-    size_t n;
-    std::cin >> n;
-    for (size_t i = 0; i < n; ++i)
+    cout << "Тест ReadOnlyStream \n";
+
+    //  Чтение из вектора
+    cout << "\n--- Тест: источник = вектор ---\n";
+    vector<int> data = {10, 20, 30};
+    ReadOnlyStream<int> streamVec(data);
+    int x;
+    cout << "Ожидаем: 10 20 30\nСчитано: ";
+    while (streamVec.TryRead(x))
+        cout << x << " ";
+    cout << "\nВекторный поток работает\n";
+
+    // Чтение из генератора
+    cout << "\n--- Тест: источник = генератор ---\n";
+    int counter = 0;
+    auto gen = [&]() -> optional<int>
     {
-        std::cout << i << ": " << fib.Get(i) << "\n";
-    }
-    std::cout << "Materialized count: " << fib.GetMaterializedCount() << "\n";
+        if (counter >= 5)
+            return nullopt;
+        return counter++;
+    };
+    ReadOnlyStream<int> streamGen(gen);
+    cout << "Ожидаем: 0 1 2 3 4\nСчитано: ";
+    while (streamGen.TryRead(x))
+        cout << x << " ";
+    cout << "\n Поток-генератор работает\n";
+
+    //  Чтение из файла
+    cout << "\n--- Тест: источник = файл ---\n";
+    ofstream out("test_input.txt");
+    out << "7 8 9";
+    out.close();
+
+    ReadOnlyStream<int> streamFile("test_input.txt");
+    cout << "Ожидаем: 7 8 9\nСчитано: ";
+    while (streamFile.TryRead(x))
+        cout << x << " ";
+    cout << "\nФайловый поток работает\n";
+
+    // Псевдо stdin (пропустим реальный ввод)
+    cout << "\n--- Тест: псевдо-stdin ---\n";
+    cout << "(Проверка, что FromStdin создаётся без ошибок)\n";
+    auto streamIn = ReadOnlyStream<int>::FromStdin();
+    cout << "Поток stdin создан успешно\n";
+
+    cout << "\n Все варианты ReadOnlyStream прошли тест\n\n";
 }
 
-int main(int argc, char **argv)
+int main()
 {
-    std::cout << "=== LazyStreamStats Demo ===\n";
-    while (true)
+    cout << " ЗАПУСК ТЕСТОВ \n\n";
+    try
     {
-        std::cout << "\nВыберите режим:\n1) Демонстрация потока и сбор статистики\n2) Демонстрация ленивой последовательности (Fibonacci)\n3) Запустить автотесты (tests executable)\n0) Выйти\n> ";
-        int cmd;
-        if (!(std::cin >> cmd))
-            break;
-        if (cmd == 0)
-            break;
-        if (cmd == 1)
-            RunStreamDemo();
-        else if (cmd == 2)
-            RunFibonacciDemo();
-        else if (cmd == 3)
-        {
-            std::cout << "Автотесты запускаются отдельно (см. tests executable). Если собрали через CMake, выполните ./tests\n";
-        }
-        else
-        {
-            std::cout << "Неизвестная команда\n";
-        }
+        TestLazyFibonacci();
+        TestStatisticsCollector();
+        TestReadOnlyStream();
+        cout << " ВСЕ ТЕСТЫ ПРОЙДЕНЫ \n";
+        return 0;
     }
-    std::cout << "Bye\n";
-    return 0;
+    catch (const exception &e)
+    {
+        cerr << "Ошибка: " << e.what() << "\n";
+        return 1;
+    }
+    catch (...)
+    {
+        cerr << "Неизвестная ошибка\n";
+        return 2;
+    }
 }

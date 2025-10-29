@@ -11,7 +11,7 @@ using namespace std;
 
 void TestLazyFibonacci()
 {
-    cout << "==== Тест LazySequence: последовательность Фибоначчи ====\n";
+    cout << " Тест LazySequence: последовательность Фибоначчи \n";
 
     LazySequence<long long>::Generator g = [](size_t idx, const vector<long long> &cache) -> long long
     {
@@ -29,19 +29,19 @@ void TestLazyFibonacci()
         long long v = fib.Get(i);
         cout << "F(" << i << ") = " << v;
         if (v == expected[i])
-            cout << " ✅\n";
+            cout << "\n";
         else
-            cout << " ❌ (ожидалось " << expected[i] << ")\n";
+            cout << " (ожидалось " << expected[i] << ")\n";
         assert(v == expected[i]);
     }
 
     cout << "Материализовано элементов: " << fib.GetMaterializedCount() << "\n";
-    cout << "✅ Тест LazySequence завершён успешно\n\n";
+    cout << "Тест LazySequence завершён успешно\n\n";
 }
 
 void TestStatisticsCollector()
 {
-    cout << "==== Тест StatisticsCollector ====\n";
+    cout << "Тест StatisticsCollector\n";
 
     StatisticsCollector<int> stats;
     vector<int> values = {5, 1, 3, 2, 4};
@@ -72,12 +72,12 @@ void TestStatisticsCollector()
 
     assert(fabs(stats.GetAverage() - 3.0) < 1e-9);
     assert(median && fabs(*median - 3.0) < 1e-9);
-    cout << "✅ Тест StatisticsCollector завершён успешно\n\n";
+    cout << "Тест StatisticsCollector завершён успешно\n\n";
 }
 
 void TestStreamFromVector()
 {
-    cout << "==== Тест ReadOnlyStream (чтение из вектора) ====\n";
+    cout << "Тест ReadOnlyStream (чтение из вектора) \n";
 
     vector<int> data = {10, 20, 30};
     ReadOnlyStream<int> stream(data);
@@ -90,28 +90,28 @@ void TestStreamFromVector()
     {
         cout << x << " ";
     }
-    cout << "\n✅ Тест StreamFromVector завершён успешно\n\n";
+    cout << "\nТест StreamFromVector завершён успешно\n\n";
 }
 
 int main()
 {
-    cout << "================= ЗАПУСК ТЕСТОВ =================\n\n";
+    cout << " ЗАПУСК ТЕСТОВ\n\n";
     try
     {
         TestLazyFibonacci();
         TestStatisticsCollector();
         TestStreamFromVector();
-        cout << "================= ВСЕ ТЕСТЫ ПРОЙДЕНЫ ✅ =================\n";
+        cout << "ВСЕ ТЕСТЫ ПРОЙДЕНЫ \n";
         return 0;
     }
     catch (const exception &e)
     {
-        cerr << "❌ Ошибка: " << e.what() << "\n";
+        cerr << "Ошибка: " << e.what() << "\n";
         return 1;
     }
     catch (...)
     {
-        cerr << "❌ Неизвестная ошибка\n";
+        cerr << "Неизвестная ошибка\n";
         return 2;
     }
 }
