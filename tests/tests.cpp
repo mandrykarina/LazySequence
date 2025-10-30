@@ -1,19 +1,42 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
-#include <cmath>
 #include <cassert>
+#include <map>
+#include <string>
+
 #include "../include/LazySequence.h"
-#include "../include/Stream.h"
-#include "../include/StatisticsCollector.h"
+#include "../include/Generator.h"
 
 using namespace std;
 
-void TestLazyFibonacci()
+// Подсчёт частот подстрок фиксированной длины (1 проход)
+std::map<std::string, size_t> CountSubstringFrequencies(LazySequence<char> &seq, size_t k)
 {
-    cout << " Тест LazySequence: последовательность Фибоначчи \n";
+    if (k == 0)
+        throw std::invalid_argument("Substring length must be > 0");
+    Generator<char> gen(&seq);
+    std::map<std::string, size_t> freq;
+    std::string window;
 
-    LazySequence<long long>::Generator g = [](size_t idx, const vector<long long> &cache) -> long long
+    while (gen.HasNext())
+    {
+        char c = gen.GetNext();
+        window.push_back(c);
+        if (window.size() > k)
+            window.erase(window.begin());
+        if (window.size() == k)
+            ++freq[window];
+    }
+    return freq;
+}
+
+// === Тесты ===
+
+void TestFibonacciGenerator()
+{
+    cout << "=== TestFibonacciGenerator ===\n";
+    LazySequence<long long>::GenFunc fibGen = [](size_t idx, const vector<long long> &cache) -> long long
     {
         if (idx == 0)
             return 0;
@@ -21,97 +44,107 @@ void TestLazyFibonacci()
             return 1;
         return cache[idx - 1] + cache[idx - 2];
     };
-    LazySequence<long long> fib(g);
 
-    long long expected[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
-    for (size_t i = 0; i < 10; ++i)
-    {
-        long long v = fib.Get(i);
-        cout << "F(" << i << ") = " << v;
-        if (v == expected[i])
-            cout << "\n";
-        else
-            cout << " (ожидалось " << expected[i] << ")\n";
-        assert(v == expected[i]);
-    }
+    LazySequence<long long> seq(fibGen);
+    Generator<long long> gen(&seq, 0);
 
-    cout << "Материализовано элементов: " << fib.GetMaterializedCount() << "\n";
-    cout << "Тест LazySequence завершён успешно\n\n";
+    vector<long long> got;
+    for (int i = 0; i < 12; ++i)
+        got.push_back(gen.GetNext());
+
+    long long expected[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89};
+    for (size_t i = 0; i < got.size(); ++i)
+        assert(got[i] == expected[i]);
+
+    cout << "Materialized count: " << seq.GetMaterializedCount() << "\n";
+    cout << "TestFibonacciGenerator passed\n\n";
 }
 
-void TestStatisticsCollector()
+void TestModifyMaterializedSequence()
 {
-    cout << "Тест StatisticsCollector\n";
+    cout << "=== TestModifyMaterializedSequence ===\n";
+    vector<int> initial = {10, 20, 30};
+    LazySequence<int> seq(initial);
+    Generator<int> gen(&seq, 1);
 
-    StatisticsCollector<int> stats;
-    vector<int> values = {5, 1, 3, 2, 4};
+    gen.Insert(15);
+    gen.Append(40);
+    gen.Remove(20);
 
-    cout << "Входные данные: ";
-    for (int v : values)
+    vector<int> values;
+    for (size_t i = 0; i < seq.GetMaterializedCount(); ++i)
+        values.push_back(seq.Get(i));
+
+    vector<int> expected = {10, 15, 30, 40};
+    assert(values == expected);
+    cout << "Modified sequence: ";
+    for (auto v : values)
         cout << v << " ";
-    cout << "\n";
-
-    for (int v : values)
-        stats.Add(v);
-
-    cout << fixed << setprecision(2);
-    cout << "Количество: " << stats.GetCount() << "\n";
-    cout << "Среднее: " << stats.GetAverage() << "\n";
-    cout << "Мин: " << stats.GetMin() << " | Макс: " << stats.GetMax() << "\n";
-
-    auto median = stats.GetMedian();
-    auto var = stats.GetVariance();
-    auto sd = stats.GetStdDev();
-
-    if (median)
-        cout << "Медиана: " << *median << "\n";
-    if (var)
-        cout << "Дисперсия: " << *var << "\n";
-    if (sd)
-        cout << "Стандартное отклонение: " << *sd << "\n";
-
-    assert(fabs(stats.GetAverage() - 3.0) < 1e-9);
-    assert(median && fabs(*median - 3.0) < 1e-9);
-    cout << "Тест StatisticsCollector завершён успешно\n\n";
+    cout << "\nTestModifyMaterializedSequence passed\n\n";
 }
 
-void TestStreamFromVector()
+void TestMapReduce()
 {
-    cout << "Тест ReadOnlyStream (чтение из вектора) \n";
+    cout << "=== TestMapReduce ===\n";
+    vector<int> data = {1, 2, 3, 4};
+    LazySequence<int> seq(data);
 
-    vector<int> data = {10, 20, 30};
-    ReadOnlyStream<int> stream(data);
+    auto squares = seq.Map<int>([](const int &x)
+                                { return x * x; });
+    int sum = seq.Reduce<int>([](int acc, const int &v)
+                              { return acc + v; }, 0);
+    assert(sum == 10);
 
-    cout << "Ожидаемые данные: 10 20 30\n";
-    cout << "Реально считано:  ";
+    cout << "Original: ";
+    for (size_t i = 0; i < seq.GetMaterializedCount(); ++i)
+        cout << seq.Get(i) << " ";
+    cout << "\nSquares: ";
+    for (size_t i = 0; i < squares.GetMaterializedCount(); ++i)
+        cout << squares.Get(i) << " ";
+    cout << "\nSum: " << sum << "\nTestMapReduce passed\n\n";
+}
 
-    int x;
-    while (stream.TryRead(x))
-    {
-        cout << x << " ";
-    }
-    cout << "\nТест StreamFromVector завершён успешно\n\n";
+void TestSubstringFrequency()
+{
+    cout << "=== TestSubstringFrequency ===\n";
+    string text = "ababa";
+    vector<char> chars(text.begin(), text.end());
+    LazySequence<char> seq(chars);
+
+    size_t k = 2;
+    auto freq = CountSubstringFrequencies(seq, k);
+
+    assert(freq["ab"] == 2);
+    assert(freq["ba"] == 2);
+
+    cout << "Text: " << text << "\n";
+    cout << "Substrings of length " << k << ":\n";
+    for (auto &[sub, count] : freq)
+        cout << "'" << sub << "' : " << count << "\n";
+
+    cout << "TestSubstringFrequency passed\n\n";
 }
 
 int main()
 {
-    cout << " ЗАПУСК ТЕСТОВ\n\n";
+    cout << fixed << setprecision(6);
     try
     {
-        TestLazyFibonacci();
-        TestStatisticsCollector();
-        TestStreamFromVector();
-        cout << "ВСЕ ТЕСТЫ ПРОЙДЕНЫ \n";
+        TestFibonacciGenerator();
+        TestModifyMaterializedSequence();
+        TestMapReduce();
+        TestSubstringFrequency();
+        cout << "ALL TESTS PASSED\n";
         return 0;
     }
-    catch (const exception &e)
+    catch (const std::exception &ex)
     {
-        cerr << "Ошибка: " << e.what() << "\n";
-        return 1;
+        cerr << "TEST FAILURE: " << ex.what() << "\n";
+        return 2;
     }
     catch (...)
     {
-        cerr << "Неизвестная ошибка\n";
-        return 2;
+        cerr << "UNKNOWN TEST FAILURE\n";
+        return 3;
     }
 }
