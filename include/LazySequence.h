@@ -12,11 +12,6 @@ class Generator; // forward declaration
 template <typename T>
 class LazySequence
 {
-private:
-    mutable std::mutex mtx;
-    std::vector<T> cache;
-    GenFunc generator;
-    friend class Generator<T>;
 
 public:
     using GenFunc = std::function<T(size_t, const std::vector<T> &)>;
@@ -167,4 +162,10 @@ public:
         std::lock_guard<std::mutex> lock(mtx);
         generator = g;
     }
+
+private:
+    mutable std::mutex mtx;
+    std::vector<T> cache;
+    GenFunc generator;
+    friend class Generator<T>;
 };

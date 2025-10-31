@@ -4,7 +4,6 @@
 #include <cassert>
 #include <map>
 #include <string>
-
 #include "../include/LazySequence.h"
 #include "../include/Generator.h"
 
@@ -31,8 +30,7 @@ std::map<std::string, size_t> CountSubstringFrequencies(LazySequence<char> &seq,
     return freq;
 }
 
-// === Тесты ===
-
+// ТЕСТ 1 — Проверка работы генератора и ленивой последовательности (Фибоначчи)
 void TestFibonacciGenerator()
 {
     cout << "=== TestFibonacciGenerator ===\n";
@@ -56,10 +54,14 @@ void TestFibonacciGenerator()
     for (size_t i = 0; i < got.size(); ++i)
         assert(got[i] == expected[i]);
 
-    cout << "Materialized count: " << seq.GetMaterializedCount() << "\n";
+    cout << "Первые 12 чисел Фибоначчи:\n";
+    for (auto v : got)
+        cout << v << " ";
+    cout << "\nМатериализовано элементов: " << seq.GetMaterializedCount() << "\n";
     cout << "TestFibonacciGenerator passed\n\n";
 }
 
+// ТЕСТ 2 — Проверка модификаций (вставка, удаление, добавление)
 void TestModifyMaterializedSequence()
 {
     cout << "=== TestModifyMaterializedSequence ===\n";
@@ -77,12 +79,14 @@ void TestModifyMaterializedSequence()
 
     vector<int> expected = {10, 15, 30, 40};
     assert(values == expected);
-    cout << "Modified sequence: ";
+
+    cout << "После модификаций (Insert/Append/Remove): ";
     for (auto v : values)
         cout << v << " ";
     cout << "\nTestModifyMaterializedSequence passed\n\n";
 }
 
+// ТЕСТ 3 — Проверка Map / Reduce
 void TestMapReduce()
 {
     cout << "=== TestMapReduce ===\n";
@@ -98,29 +102,36 @@ void TestMapReduce()
     cout << "Original: ";
     for (size_t i = 0; i < seq.GetMaterializedCount(); ++i)
         cout << seq.Get(i) << " ";
+
     cout << "\nSquares: ";
-    for (size_t i = 0; i < squares.GetMaterializedCount(); ++i)
+    for (size_t i = 0; i < seq.GetMaterializedCount(); ++i)
         cout << squares.Get(i) << " ";
-    cout << "\nSum: " << sum << "\nTestMapReduce passed\n\n";
+
+    cout << "\nSum (Reduce): " << sum << "\nTestMapReduce passed\n\n";
 }
 
+// ТЕСТ 4 — Прикладная задача: подсчёт частот подстрок в тексте
 void TestSubstringFrequency()
 {
-    cout << "=== TestSubstringFrequency ===\n";
+    cout << "=== TestSubstringFrequency (прикладная задача) ===\n";
     string text = "ababa";
     vector<char> chars(text.begin(), text.end());
     LazySequence<char> seq(chars);
 
+    cout << "Исходная строка: \"" << text << "\"\n";
+    cout << "Задача: посчитать, сколько раз встречаются подстроки длины 2\n";
+    cout << "и сделать это за один проход, не сохраняя все подстроки заранее.\n\n";
+
     size_t k = 2;
     auto freq = CountSubstringFrequencies(seq, k);
 
+    cout << "Результаты анализа:\n";
+    for (auto &[sub, count] : freq)
+        cout << "  '" << sub << "' : " << count << "\n";
+
+    // Проверка ожидаемых результатов
     assert(freq["ab"] == 2);
     assert(freq["ba"] == 2);
-
-    cout << "Text: " << text << "\n";
-    cout << "Substrings of length " << k << ":\n";
-    for (auto &[sub, count] : freq)
-        cout << "'" << sub << "' : " << count << "\n";
 
     cout << "TestSubstringFrequency passed\n\n";
 }
