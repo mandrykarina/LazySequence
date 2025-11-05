@@ -112,7 +112,7 @@ void TestMapReduce()
 void TestSubstringFrequency()
 {
     cout << "прикладная задача\n";
-    string text = "ababa";
+    string text = "ababba";
     vector<char> chars(text.begin(), text.end());
     LazySequence<char> seq(chars);
 
