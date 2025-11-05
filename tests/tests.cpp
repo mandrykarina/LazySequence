@@ -13,7 +13,7 @@ using namespace std;
 std::map<std::string, size_t> CountSubstringFrequencies(LazySequence<char> &seq, size_t k)
 {
     if (k == 0)
-        throw std::invalid_argument("Substring length must be > 0");
+        throw std::invalid_argument("длина > 0");
     Generator<char> gen(&seq);
     std::map<std::string, size_t> freq;
     std::string window;
@@ -33,7 +33,7 @@ std::map<std::string, size_t> CountSubstringFrequencies(LazySequence<char> &seq,
 // ТЕСТ 1 — Проверка работы генератора и ленивой последовательности (Фибоначчи)
 void TestFibonacciGenerator()
 {
-    cout << "=== TestFibonacciGenerator ===\n";
+    cout << "фибоначи генератор\n";
     LazySequence<long long>::GenFunc fibGen = [](size_t idx, const vector<long long> &cache) -> long long
     {
         if (idx == 0)
@@ -58,13 +58,12 @@ void TestFibonacciGenerator()
     for (auto v : got)
         cout << v << " ";
     cout << "\nМатериализовано элементов: " << seq.GetMaterializedCount() << "\n";
-    cout << "TestFibonacciGenerator passed\n\n";
 }
 
 // ТЕСТ 2 — Проверка модификаций (вставка, удаление, добавление)
 void TestModifyMaterializedSequence()
 {
-    cout << "=== TestModifyMaterializedSequence ===\n";
+    cout << " проверка модификаций \n";
     vector<int> initial = {10, 20, 30};
     LazySequence<int> seq(initial);
     Generator<int> gen(&seq, 1);
@@ -83,13 +82,12 @@ void TestModifyMaterializedSequence()
     cout << "После модификаций (Insert/Append/Remove): ";
     for (auto v : values)
         cout << v << " ";
-    cout << "\nTestModifyMaterializedSequence passed\n\n";
 }
 
 // ТЕСТ 3 — Проверка Map / Reduce
 void TestMapReduce()
 {
-    cout << "=== TestMapReduce ===\n";
+    cout << "   TestMapReduce \n";
     vector<int> data = {1, 2, 3, 4};
     LazySequence<int> seq(data);
 
@@ -99,21 +97,21 @@ void TestMapReduce()
                               { return acc + v; }, 0);
     assert(sum == 10);
 
-    cout << "Original: ";
+    cout << "начальная: ";
     for (size_t i = 0; i < seq.GetMaterializedCount(); ++i)
         cout << seq.Get(i) << " ";
 
-    cout << "\nSquares: ";
+    cout << "\nв квадрате: ";
     for (size_t i = 0; i < seq.GetMaterializedCount(); ++i)
         cout << squares.Get(i) << " ";
 
-    cout << "\nSum (Reduce): " << sum << "\nTestMapReduce passed\n\n";
+    cout << "\nSum (Reduce): " << sum;
 }
 
 // ТЕСТ 4 — Прикладная задача: подсчёт частот подстрок в тексте
 void TestSubstringFrequency()
 {
-    cout << "=== TestSubstringFrequency (прикладная задача) ===\n";
+    cout << "прикладная задача\n";
     string text = "ababa";
     vector<char> chars(text.begin(), text.end());
     LazySequence<char> seq(chars);
@@ -132,8 +130,6 @@ void TestSubstringFrequency()
     // Проверка ожидаемых результатов
     assert(freq["ab"] == 2);
     assert(freq["ba"] == 2);
-
-    cout << "TestSubstringFrequency passed\n\n";
 }
 
 int main()

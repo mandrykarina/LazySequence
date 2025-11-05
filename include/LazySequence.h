@@ -7,7 +7,7 @@
 #include <algorithm>
 
 template <typename T>
-class Generator; // forward declaration
+class Generator;
 
 template <typename T>
 class LazySequence
@@ -17,14 +17,16 @@ public:
     using GenFunc = std::function<T(size_t, const std::vector<T> &)>;
 
     LazySequence() : generator(nullptr) {}
-    explicit LazySequence(const std::vector<T> &items)
-        : cache(items), generator(nullptr) {}
-    explicit LazySequence(GenFunc gen)
-        : generator(gen) {}
 
+    // чтобы не было неявного перобразования типов
+    explicit LazySequence(const std::vector<T> &items) : cache(items), generator(nullptr) {}
+    explicit LazySequence(GenFunc gen) : generator(gen) {}
+
+    // нельзя копировать
     LazySequence(const LazySequence &other) = delete;
     LazySequence &operator=(const LazySequence &other) = delete;
 
+    // можно перемещать
     LazySequence(LazySequence &&other) noexcept
     {
         std::lock_guard<std::mutex> lock(other.mtx);
@@ -44,7 +46,7 @@ public:
         return *this;
     }
 
-    // Доступ
+    // функции
     T Get(size_t index)
     {
         std::lock_guard<std::mutex> lock(mtx);
@@ -122,7 +124,7 @@ public:
         cache.insert(cache.end(), other.cache.begin(), other.cache.end());
     }
 
-    // === Исправленный Map (снятие const через const_cast) ===
+    // преобразовать каждый элемент (например, возвести в квадрат)
     template <typename U>
     LazySequence<U> Map(std::function<U(const T &)> f) const
     {
@@ -135,6 +137,7 @@ public:
         return LazySequence<U>(g);
     }
 
+    // свернуть всю последовательность в одно значение (например, сумма)
     template <typename U>
     U Reduce(std::function<U(U, const T &)> reducer, U init) const
     {
@@ -146,6 +149,7 @@ public:
         return init;
     }
 
+    // фильтр последовательности
     LazySequence<T> Where(std::function<bool(const T &)> pred) const
     {
         std::lock_guard<std::mutex> lock(mtx);
